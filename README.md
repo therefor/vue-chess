@@ -11,4 +11,5 @@ cd vue-chess-master
 npm install
 node socket.js
 ```  
+
 >然后访问 [localhost地址](http://localhost:3001/)
