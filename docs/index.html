@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Vue 五子棋</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+  <style>
+
+    *{
+      margin: 0;
+      padding: 0;
+      font-family: "Arial","Microsoft YaHei","黑体","宋体",sans-serif;
+      user-select: none;
+    }
+
+    [v-cloak] { display: none }
+
+    div .gameBoard{
+      width: 450px;
+    }
+
+    div{
+      margin: auto;
+    }
+
+    button{
+      padding: 3px;
+      margin: 15px;
+      width: auto;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    button:active {
+      transform: translate(0px, 2px);
+    }
+
+    div .title{
+      width: 220px;
+      margin: 10px auto 30px auto;
+      text-align: center;
+    }
+
+    div .inline{
+
+      height: 40px;
+      margin: 0;
+    }
+
+    div::before, div::after{
+      margin: 0;
+      padding:0;
+    }
+
+    span{
+      width: 40px;
+      height: 40px;
+    }
+
+    i{
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      border-radius: 50%;
+    }
+
+    i::before,
+    i::after{
+      content: "";
+      position: absolute;
+    }
+
+    i::before{
+      top: 20px;
+      width: 40px;
+      height: 0;
+      z-index: -1;
+      border-top: 1px solid #333;
+    }
+
+    i::after{
+      left: 20px;
+      width: 0;
+      height: 40px;
+      z-index: -1;
+      border-left: 1px solid #333;
+    }
+
+    /* 白棋子*/
+    i.w,
+    i.w::before,
+    i.w::after {
+      background: radial-gradient( farthest-side at 30% 30%, white , #767676);
+      border-color: black;
+    }
+
+    /* 白棋子*/
+    i.b,
+    i.b::before,
+    i.b::after {
+      background: radial-gradient( farthest-side at 30% 30%, #595959 ,black);
+      border-color: black;
+    }
+
+    .flexDiv{
+      display: flex;
+      justify-content: center;
+    }
+  </style>
+</head>
+
+<body>
+  <div class = "center" id = "app" v-cloak>
+    <div class = "title">Vue 五子棋</div>
+    <game-board
+            :x-Len = "xLength"
+            :y-Len = "yLength">
+    </game-board>
+  </div>
+
+  <template id = "game-board-template">
+    <div class = "gameBoard" :style="{ width: 40 * yLen+ 'px' }">
+      <div class = "inline" v-for = "x in pieces.xLen">
+        <span   v-for = "y in pieces.yLen">
+          <i :class ="pieces[ toCoord(x) + toCoord(y) ]"  @click = "tick( x, y )"></i>
+        </span >
+      </div >
+      <div class = "flexDiv">
+        <button @click = "init">重开一局</button>
+        <button @click = "undo">悔棋</button>
+      </div>
+    </div>
+  </template>
+
+
+  <script src="https://unpkg.com/vue/dist/vue.js"></script>
+
+<script>
+    Vue.component( 'game-board', {
+        template: '#game-board-template',
+        data: function(){
+            return{
+                gameInPlay: false,
+                //xLen: 12,
+                //yLen: 12,
+                whoseFirst: 0,//谁先下
+                playerTurn: 0, // 0(false): player1 class .w ; !0(true): player2 .b
+                history:[], //下棋的历史坐标，将坐标按顺序push进去，如 x = 3， y = 12，将push "0312" 进去
+                pieces: {}, //用坐标生成的key(比如“0312”)，纪录每个棋手对应的class(.w or .b)
+                pieceColor:{
+                    b: "b",
+                    w: "w"
+                }// 棋子颜色
+            }
+        },
+        props:['xLen', 'yLen'],
+        computed:{
+            xCenter: function(){
+                return Math.round(this.xLen/2);
+            },
+            yCenter: function(){
+                return Math.round(this.yLen/2);
+            }
+        },
+        created: function(){
+            this.init();
+        },
+        methods:{
+            init: function(){
+                this.gameInPlay = true;
+                this.playerTurn = this.whoseFirst;
+                this.whoseFirst = !this.whoseFirst; //重置顺序
+                this.history = [];
+                //初始化数组
+                var pieces = {
+                    xLen: this.xLen,
+                    yLen: this.yLen
+                };
+                for(var x = 0; x < this.xLen; x++){
+                    for(var y = 0; y < this.yLen; y++){
+                        var player = "";
+                        var coord = this.toCoord( x ) + this.toCoord( y ); // 坐标
+                        if( x === this.xCenter && y === this.yCenter){
+                            //中间的棋子先放上去
+                            pieces[ coord ] = this.playerTurn ? this.pieceColor.w : this.pieceColor.b;
+                            this.playerTurn = !this.playerTurn;
+                        }else{
+                            pieces[ coord ] = player;
+                        }
+                    }
+                }
+                this.pieces = pieces;
+            },
+            undo: function(){
+                if ( this.history.length > 0 ){
+                    var last = this.history.pop();
+                    this.pieces[ last ] = "";
+                    this.playerTurn = !this.playerTurn;
+                    this.gameInPlay = true;
+                }else{
+                    alert("no more to regret!");
+                }
+            },
+            toCoord: function( m ){
+                return m<10? "0" + m : "" + m;
+            },
+            tick: function( x, y ){
+                var coord = this.toCoord(x)+ this.toCoord(y);
+                //alert(coord);
+                if ( !this.pieces[ coord ] && this.gameInPlay ){
+                    this.pieces[ coord ] = this.playerTurn ? this.pieceColor.w : this.pieceColor.b;
+                    this.playerTurn = !this.playerTurn;
+                    this.history.push(coord); //保存历史记录
+
+                    if ( this.check( x, y) ){
+                        //赢了，不准再落子
+                        alert("win!");
+                        this.gameInPlay = false;
+                    }
+                }
+            },
+            check: function( x, y ){
+                var thisPiece = this.pieces[ this.toCoord( x ) + this.toCoord( y )];
+                if( this.checkXY( x, y, 0, thisPiece) || this.checkXY( x, y, 1, thisPiece) ||
+                    this.checkX( x, y, 0, thisPiece) || this.checkX( x, y, 1, thisPiece) ){
+                    //纵向检查、横向检查、斜向\检查、斜向/检查
+                    return true;
+                }
+                return false;
+            },
+            checkXY: function( x, y, mode, thisPiece ){
+                //mode:0 检查x纵向， mode：1检查y横向
+                var count = 0;
+                var whichToCheck = (mode === 0)? x: y;
+                var whichLen = (mode === 0)? this.pieces.xLen: this.pieces.yLen;
+                var begin = whichToCheck - 4 >= 0? whichToCheck - 4: 0;
+                var end = whichToCheck + 4 < whichLen? whichToCheck + 4 : whichLen - 1;
+                for ( var i = begin; i <= end; i++){
+                    var coord = (mode === 0)? (this.toCoord( i ) + this.toCoord( y )):(this.toCoord( x ) + this.toCoord( i ));
+                    if( this.pieces[ coord ] === thisPiece){
+                        count++;
+                    }else{
+                        count = 0;
+                    }
+                    if (count === 5){
+                        return true;
+                    }
+                }
+                return false;
+            },
+            checkX: function( x, y, mode, thisPiece ){
+                //检查两个交叉方向，此处无需检测边界，因为边界外的coord对应的pieces[coord]为undefined
+                //mode:0 从左上角检查至右下角
+                //mode：1 从右上角检查至左下角
+                var count = 0;
+                var xBegin = x - 4;
+                var xEnd = x + 4;
+                var yBegin = y - 4;
+                var yEnd = y + 4;
+                var ix = xBegin;
+                var iy = (mode === 0)? yBegin: yEnd;
+                while(ix <= xEnd ){
+                    var coord = this.toCoord( ix )+ this.toCoord( iy );
+                    if( this.pieces[ coord ] == thisPiece ){
+                        count++;
+                    }else{
+                        count = 0;
+                    }
+                    if( count === 5 ){
+                        return true;
+                    }
+                    if( mode === 0){
+                        //从左上角到右下角
+                        if( iy >= yEnd ){
+                            break;
+                        }else{
+                            iy++;
+                        }
+                    }else if( mode ===1 ){
+                        //从右上角到左下角
+                        if( iy <= yBegin ){
+                            break;
+                        }else{
+                            iy--;
+                        }
+                    }
+                    ix++;
+                }
+                return false;
+            }
+        }
+    })
+
+    var demo = new Vue({
+        el:'#app',
+        data: {
+            xLength: 12,
+            yLength: 12
+        }
+    });
+</script>
+</body>
+
+</html>
